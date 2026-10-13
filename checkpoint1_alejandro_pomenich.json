@@ -1,0 +1,336 @@
+{
+  "name": "checkpoint1_alejandro_pomenich",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=id_mail: {{ $json.id }}\nfecha_mail: {{ $json.date }}\nremitente: {{ $json.from.value[0].address }}\nasunto: {{ $json.subject }}\n\ncontenido:\n{{ $json.text.replace(/https?:\\/\\/\\S+/g, '').replace(/\\s+/g, ' ').slice(0, 4000) }}\n\ninstrucción: antes de redactar el reporte, llama a la herramienta sheets_log para registrar este correo en el Log.",
+        "options": {
+          "systemMessage": "# ROL\nEres un agente de observabilidad de los correos de Airbnb de Alejandro Pomenich. Lees cada mail, lo clasificas, lo registras en un Log y envías un reporte corto con una acción sugerida.\n\n# ÁMBITO\n- Solo correos de automated@airbnb.com en aj.pomenich@gmail.com.\n- Solo clasificas, registras y reportas. No respondes a huéspedes, no escribes al equipo de limpieza y no modificas nada en Airbnb.\n- Restricciones: no uses lenguaje inclusivo; no inventes datos; no escribas a terceros\n\n# OBJETIVO\nPor cada mail: (1) clasificarlo, (2) registrarlo en la hoja Log, (3) redactar el \"Reporte de observabilidad\" a Alejandro con la acción sugerida.\n\n# PROCESO\n1. Lee el mail completo.\n2. Clasifica el tipo.\n3. Extrae los datos: código de reserva, huésped, propiedad, check-in, check-out, monto.\n4. Define la acción sugerida según la tabla.\n5. Registra en Log.\n6. Redacta el reporte\n\n# CLASIFICACIÓN Y ACCIÓN SUGERIDA\n| Tipo | Cómo lo reconoces | Acción sugerida |\n|---|---|---|\n| reserva_confirmada | Asunto o título con \"Reservation confirmed\" o \"New booking confirmed\" | Notificar equipo de limpieza |\n| cancelacion | El mail indica que una reserva fue cancelada | Notificar equipo de limpieza |\n| pago | Asunto con \"We sent a payout\" | Chequear el banco |\n| otro | Todo lo demás (recordatorios, consultas, mensajes) | Sin acción |\n\nSi no puedes clasificar el mail o faltan datos clave, usa tipo \"otro\" y acción \"Revisar manualmente\".\n\n# REGLAS DE HERRAMIENTAS\n1. El mail llega en el mensaje del usuario (id_mail, fecha_mail, remitente, asunto, contenido). No lo busques ni lo pidas de nuevo.\n2. sheets_log: llámala UNA SOLA VEZ por mail. Si ya la llamaste y respondió OK, no la llames de nuevo; pasa directo a escribir el reporte.\n3. No envías mails ni creas borradores: de eso se encarga otro nodo.\n4. Montos como número sin puntos ni símbolo (195565). Fechas en AAAA-MM-DD.\n5. No inventes datos: Si un dato no aparece textualmente en el mail, no lo deduzcas. En el reporte escribe \"no informado\"; en las celdas del Log déjalo vacío.\n\n# ESCALAMIENTO\nSi no puedes clasificar el mail o faltan datos clave, usa tipo \"otro\" y acción sugerida \"Revisar manualmente\", e indica en el motivo qué faltó.\n\n# SALIDA\nTu respuesta final es solo el texto del reporte, sin saludo ni comentarios extra, con este formato exacto:\n\nReporte de observabilidad\n- Tipo de correo: <tipo>\n- Huésped: <huésped o \"no informado\">\n- Propiedad: <propiedad o \"no informado\">\n- Fechas: <check-in dd/mm/aaaa> al <check-out dd/mm/aaaa>. Si es un pago: \"Enviado: <fecha>\". Si no hay fechas: \"no informado\"\n- Monto: $<monto con punto de miles> CLP. Si no hay monto: \"no informado\"\n- Registrado en Log: sí\n\nACCIÓN SUGERIDA: <Notificar equipo de limpieza | Chequear el banco | Sin acción | Revisar manualmente>\nMotivo: <una línea>\n\n# ESTILO\n- Español neutro, breve, sin emojis.\n- Fechas dd/mm/aaaa y montos con punto de miles en el reporte.\n\n# ORDEN OBLIGATORIO\n1. Clasifica el mail.\n2. LLAMA a sheets_log exactamente UNA vez. Si ya respondió OK, NO la llames de nuevo.\n3. Recién cuando sheets_log responda OK, escribe el reporte.",
+          "maxIterations": 7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        384,
+        640
+      ],
+      "id": "6605638c-44f3-4a5c-83b3-2c99da2b574d",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "hour": 12
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "sender": "automated@airbnb.com"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        144,
+        640
+      ],
+      "id": "ee917c19-e74c-4ff1-8a8e-be51f809b83a",
+      "name": "Gmail Trigger1",
+      "alwaysOutputData": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NiaEzgiDsrqQhBVb",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        848
+      ],
+      "id": "40fe0280-ebd2-4f32-880b-853393e8ac7e",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Úsala SIEMPRE que recibas un correo de Airbnb (reserva confirmada, cancelación, pago, recordatorio o cualquier otro tipo), ya que todo mail debe quedar registrado. Úsala una sola vez por mail, después de clasificar y antes de escribir el reporte. No la uses si el contenido no es un correo de Airbnb.\n\nAgrega UNA fila a la hoja Log por cada mail de Airbnb procesado. Completa: fecha_proceso (hoy, AAAA-MM-DD), id_mail, fecha_mail, asunto, tipo (reserva_confirmada, cancelacion, pago u otro), codigo_reserva (vacío si no aplica), huesped, propiedad, monto_clp (para reservas, el pago al anfitrión \"You earn\"; para pagos, el monto enviado; número sin puntos ni símbolo), accion_sugerida (Notificar equipo de limpieza, Chequear el banco, Sin acción o Revisar manualmente) y razonamiento (una línea). Si un dato no aparece en el mail, deja la celda vacía. No busca, no actualiza y no borra filas.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1PLZ91h7dA1yLY5_kkEQCDg0B5kPl0rJaA4P32AGkHAk",
+          "mode": "list",
+          "cachedResultName": "Log Clasificación Reservas Airbnb_ Clase 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PLZ91h7dA1yLY5_kkEQCDg0B5kPl0rJaA4P32AGkHAk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PLZ91h7dA1yLY5_kkEQCDg0B5kPl0rJaA4P32AGkHAk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fecha_proceso": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fecha_proceso', ``, 'string') }}",
+            "id_mail": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id_mail', ``, 'string') }}",
+            "fecha_mail": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fecha_mail', ``, 'string') }}",
+            "asunto": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('asunto', ``, 'string') }}",
+            "tipo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tipo', ``, 'string') }}",
+            "codigo_reserva": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('codigo_reserva', ``, 'string') }}",
+            "huesped": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('huesped', ``, 'string') }}",
+            "propiedad": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('propiedad', ``, 'string') }}",
+            "monto_clp": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('monto_clp', ``, 'string') }}",
+            "accion_sugerida": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('accion_sugerida', ``, 'string') }}",
+            "razonamiento": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('razonamiento', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "fecha_proceso",
+              "displayName": "fecha_proceso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id_mail",
+              "displayName": "id_mail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "fecha_mail",
+              "displayName": "fecha_mail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "codigo_reserva",
+              "displayName": "codigo_reserva",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "huesped",
+              "displayName": "huesped",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "propiedad",
+              "displayName": "propiedad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "monto_clp",
+              "displayName": "monto_clp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "accion_sugerida",
+              "displayName": "accion_sugerida",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "razonamiento",
+              "displayName": "razonamiento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        544,
+        848
+      ],
+      "id": "6b0c41a4-2bd4-4414-887a-e0ea6f8cf0d8",
+      "name": "sheets_log",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GoumOhniYXeUDOe0",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "aj.pomenich@gmail.com",
+        "subject": "=Reporte de observabilidad – {{ $('Gmail Trigger1').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.output }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        640
+      ],
+      "id": "c4d8047e-4156-465e-9daf-e2f51a9ca1de",
+      "name": "Send a message",
+      "webhookId": "035ce9ce-cae6-4920-814d-0f98587fdccf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NiaEzgiDsrqQhBVb",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sheets_log": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a69392a9-e8ec-4171-a286-0e3b23e10e0f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1452dc47803adbd1ba61457376d489fa36f99ebb63cd213a407d0961228c185a"
+  },
+  "nodeGroups": [],
+  "id": "4S73SvjSVoLJXgE2",
+  "tags": []
+}
